@@ -1,9 +1,10 @@
+//go:build !windows
 // +build !windows
 
 package graceful
 
 import (
-	"net/http"
+	"github.com/gofiber/fiber/v2"
 	"os"
 	"syscall"
 	"time"
@@ -51,7 +52,8 @@ func WithStopSignals(sigs []syscall.Signal) Option {
 }
 
 // WithStopTimeout set stop timeout for graceful shutdown
-//  if timeout occurs, running connections will be discard violently.
+//
+//	if timeout occurs, running connections will be discard violently.
 func WithStopTimeout(timeout time.Duration) Option {
 	return func(o *option) {
 		o.stopTimeout = timeout
@@ -74,7 +76,7 @@ type address struct {
 type Server struct {
 	opt      *option
 	addrs    []address
-	handlers []http.Handler
+	handlers []*fiber.App
 }
 
 func NewServer(opts ...Option) *Server {
@@ -89,20 +91,20 @@ func NewServer(opts ...Option) *Server {
 	}
 	return &Server{
 		addrs:    make([]address, 0),
-		handlers: make([]http.Handler, 0),
+		handlers: make([]*fiber.App, 0),
 		opt:      option,
 	}
 }
 
 // Register an addr and its corresponding handler
 // all (addr, handler) pair will be started with server.Run
-func (s *Server) Register(addr string, handler http.Handler) {
+func (s *Server) Register(addr string, handler *fiber.App) {
 	s.addrs = append(s.addrs, address{addr, "tcp"})
 	s.handlers = append(s.handlers, handler)
 }
 
 // RegisterUnix register (addr, handler) on unix socket
-func (s *Server) RegisterUnix(addr string, handler http.Handler) {
+func (s *Server) RegisterUnix(addr string, handler *fiber.App) {
 	s.addrs = append(s.addrs, address{addr, "unix"})
 	s.handlers = append(s.handlers, handler)
 }
@@ -134,7 +136,7 @@ func (s *Server) Reload() error {
 }
 
 // ListenAndServe starts server with (addr, handler)
-func ListenAndServe(addr string, handler http.Handler) error {
+func ListenAndServe(addr string, handler *fiber.App) error {
 	server := NewServer()
 	server.Register(addr, handler)
 	return server.Run()
