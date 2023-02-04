@@ -1,14 +1,14 @@
+//go:build !windows
 // +build !windows
 
 package graceful
 
 import (
-	"context"
 	"errors"
 	"fmt"
+	"github.com/gofiber/fiber/v2"
 	"log"
 	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -26,7 +26,7 @@ var (
 )
 
 type worker struct {
-	handlers []http.Handler
+	handlers []*fiber.App
 	servers  []server
 	opt      *option
 	stopCh   chan struct{}
@@ -34,7 +34,7 @@ type worker struct {
 }
 
 type server struct {
-	*http.Server
+	*fiber.App
 	listener net.Listener
 }
 
@@ -85,9 +85,7 @@ func (w *worker) initServers() error {
 			return fmt.Errorf("failed to inherit file descriptor: %d", i)
 		}
 		server := server{
-			Server: &http.Server{
-				Handler: w.handlers[i],
-			},
+			App:      w.handlers[i],
 			listener: l,
 		}
 		w.servers = append(w.servers, server)
@@ -102,7 +100,7 @@ func (w *worker) startServers() error {
 	for i := 0; i < len(w.servers); i++ {
 		s := w.servers[i]
 		go func() {
-			if err := s.Serve(s.listener); err != nil {
+			if err := s.Listener(s.listener); err != nil {
 				log.Printf("http Serve error: %v\n", err)
 			}
 		}()
@@ -154,9 +152,7 @@ func (w *worker) stop() {
 	w.Lock()
 	defer w.Unlock()
 	for _, server := range w.servers {
-		ctx, cancel := context.WithTimeout(context.TODO(), w.opt.stopTimeout)
-		defer cancel()
-		err := server.Shutdown(ctx)
+		err := server.ShutdownWithTimeout(w.opt.stopTimeout)
 		if err != nil {
 			log.Printf("shutdown server error: %v\n", err)
 		}
