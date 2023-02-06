@@ -3,7 +3,7 @@
 package graceful
 
 import (
-	"net/http"
+	"github.com/gofiber/fiber/v2"
 	"time"
 )
 
@@ -21,7 +21,7 @@ type option struct {
 type Server struct {
 	opt      *option
 	addrs    []address
-	handlers []http.Handler
+	handlers []*fiber.App
 }
 
 func NewServer(opts ...option) *Server {
@@ -29,10 +29,10 @@ func NewServer(opts ...option) *Server {
 	return nil
 }
 
-func (s *Server) Register(addr string, handler http.Handler) {
+func (s *Server) Register(addr string, handler *fiber.App) {
 }
 
-func (s *Server) RegisterUnix(addr string, handler http.Handler) {
+func (s *Server) RegisterUnix(addr string, handler *fiber.App) {
 }
 
 func (s *Server) Run() error {
@@ -48,7 +48,7 @@ func IsWorker() bool {
 	return false
 }
 
-func ListenAndServe(addr string, handler http.Handler) error {
+func ListenAndServe(addr string, handler *fiber.App) error {
 	panic("platform windows unsupported")
 	return nil
 }
